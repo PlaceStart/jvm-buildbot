@@ -6,11 +6,24 @@
 
 ; Utilities for the Reddit API
 (def api-base "https://www.reddit.com/api/")
-(defn api [endpoint] (as-url (str api-base endpoint)))
+(defn api [endpoint] (str api-base endpoint))
 
 ; URLs for later use
 (def template-url (as-url "https://github.com/PlaceStart/placestart/raw/master/target.png"))
 (def bitmap-url (api "place/board-bitmap"))
+
+(defn retry-get
+  "Retry a GET request up to a limited number of times"
+  ([url max-retries]
+   (loop [retries max-retries]
+     (let [resp (client/get url)]
+       (if (= (:status resp) 200)
+         resp
+         (if (zero? retries) resp
+           (do
+             (Thread/sleep 1000)
+             (recur (dec retries))))))))
+  ([url] (retry-get url 10)))
 
 (def color-map {[255 255 255] :white
                 [228 228 228] :lightgray
@@ -29,6 +42,7 @@
                 [207 110 228] :pink
                 [130 0 128]   :purple
                 [54 199 57]   :dummy})
+(def color-map-inv (clojure.set/map-invert color-map))
 
 (def code-map {:white      0
                :lightgray  1
@@ -47,6 +61,7 @@
                :pink       14
                :purple     15
                :dummy      16})
+(def code-inv-map (clojure.set/map-invert code-map))
 
 (defn split-rgb
   "Split a color integer into rgb components"
@@ -72,7 +87,16 @@
 (defn get-board
   "Get the current state of the board"
   []
-  )
+  (let [response (retry-get bitmap-url)
+        board-content (drop 4 (.getBytes (:body response))) ; ignore timestamp
+        bit-packed (apply concat (map (fn [n]
+                                        [(bit-and 0xf (unsigned-bit-shift-right n 4))
+                                         (bit-and 0xf n)])
+                                      board-content))
+        colorized (map #(get code-inv-map %) bit-packed)]
+    (zipmap (for [y (range 1000)
+                  x (range 1000)] [x y])
+            colorized)))
 
 (defn find-errors
   "Find errors between the given board and template"
