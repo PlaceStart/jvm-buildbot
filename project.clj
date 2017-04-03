@@ -5,7 +5,8 @@
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [clj-http "2.3.0"]
                  [seesaw "1.4.5"]
-                 [net.mikera/imagez "0.12.0"]]
+                 [net.mikera/imagez "0.12.0"]
+                 [cheshire "5.7.0"]]
   :main ^:skip-aot placestart.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}})
