@@ -34,11 +34,9 @@
    (loop [retries max-retries]
      (let [resp (polite-op client/get url (assoc opts "User-Agent" user-agent))]
        (if (= (:status resp) 200)
-         (do (Thread/sleep 2000) resp)
+         resp
          (if (zero? retries) resp
-           (do
-             (Thread/sleep 2000)
-             (recur (dec retries))))))))
+           (recur (dec retries)))))))
   ([url retries] (retry-get retries {}))
   ([url] (retry-get url 10)))
 
@@ -85,7 +83,7 @@
                 [0 0 234]     :blue
                 [207 110 228] :pink
                 [130 0 128]   :purple
-                [54 199 57]   :dummy})
+                [0 128 128]   :dummy})
 (def color-map-inv (clojure.set/map-invert color-map))
 
 (def code-map {:white      0
