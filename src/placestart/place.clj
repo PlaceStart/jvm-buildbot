@@ -14,11 +14,25 @@
 (def template-url (as-url "https://github.com/PlaceStart/placestart/raw/master/target.png"))
 (def bitmap-url (api "place/board-bitmap"))
 
+(def next-allowed-request (atom (java.time.Instant/now)))
+
+(defn polite-op
+  "Wait for the next API timeout then send a request"
+  [f url opts]
+  (loop []
+    (if (.isAfter (java.time.Instant/now) @next-allowed-request)
+      (do 
+        (reset! next-allowed-request (.plusSeconds (java.time.Instant/now) 2.1))
+        (f url opts))
+      (do
+        (Thread/sleep 100)
+        (recur)))))
+
 (defn retry-get
   "Retry a GET request up to a limited number of times"
   ([url max-retries opts]
    (loop [retries max-retries]
-     (let [resp (client/get url (assoc opts "User-Agent" user-agent))]
+     (let [resp (polite-op client/get url (assoc opts "User-Agent" user-agent))]
        (if (= (:status resp) 200)
          (do (Thread/sleep 2000) resp)
          (if (zero? retries) resp
@@ -28,11 +42,15 @@
   ([url retries] (retry-get retries {}))
   ([url] (retry-get url 10)))
 
+(defn polite-post
+  [url opts]
+  (polite-op client/post url opts))
+
 (defn login
   "Log into the Reddit API with a given username and password, and return the
   resulting map of :cookies and :modhash."
   [username password]
-  (let [resp (client/post (api "login/" username)
+  (let [resp (polite-post (api "login/" username)
                           {:form-params {:user username
                                          :passwd password
                                          :api_type "json"}
@@ -49,7 +67,7 @@
    (let [headers (merge (:headers options) {"User-Agent" user-agent
                                             "Cookie" (str "reddit_session=" (:reddit-session auth))
                                             "x-modhash" (:modhash auth)})]
-     (client/post url (assoc options :headers headers)))))
+     (polite-post url (assoc options :headers headers)))))
 
 (def color-map {[255 255 255] :white
                 [228 228 228] :lightgray
@@ -161,6 +179,11 @@
 
 (def cur-board (atom (get-board)))
 (def cur-template (atom (get-template)))
+
+(defn update-template
+  "Update the current template"
+  []
+  (reset! cur-template (get-template)))
 
 (defn update-board
   "Update the current global board information"
