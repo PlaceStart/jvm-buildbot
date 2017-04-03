@@ -11,7 +11,7 @@
 (def user-agent "PlaceStartJVM")
 
 ; URLs for later use
-(def template-url (as-url "https://github.com/PlaceStart/placestart/raw/master/target.png"))
+(def template-url (as-url "https://github.com/PlaceStart/target-image/raw/master/target.png"))
 (def bitmap-url (api "place/board-bitmap"))
 
 (def next-allowed-request (atom (java.time.Instant/now)))
